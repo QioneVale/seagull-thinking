@@ -196,18 +196,22 @@ fun PersonalizeScreen(vm: AppViewModel, onBack: () -> Unit) {
 
             Spacer(Modifier.height(24.dp))
             SectionLabel("字号")
+            var scale by remember(settings.fontScale) { mutableFloatStateOf(settings.fontScale) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("A", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Slider(
-                    value = settings.fontScale,
-                    onValueChange = { scope.launch { vm.settingsRepo.setFontScale(it) } },
+                    value = scale,
+                    onValueChange = { scale = it },
+                    onValueChangeFinished = {
+                        scope.launch { vm.settingsRepo.setFontScale(scale) }
+                    },
                     valueRange = 0.85f..1.25f,
                     modifier = Modifier.weight(1f).padding(horizontal = 10.dp)
                 )
                 Text("A", fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(
-                "当前 ${(settings.fontScale * 100).toInt()}%",
+                "当前 ${(scale * 100).toInt()}%",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -245,10 +249,11 @@ fun PlanScreen(vm: AppViewModel, onBack: () -> Unit) {
         Column(Modifier.padding(horizontal = 20.dp)) {
 
             SectionLabel("每天看几条")
+            var daily by remember(settings.dailyTarget) { mutableFloatStateOf(settings.dailyTarget.toFloat()) }
             SeagullCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "${settings.dailyTarget}",
+                        "${daily.toInt()}",
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -271,8 +276,11 @@ fun PlanScreen(vm: AppViewModel, onBack: () -> Unit) {
                     }
                 }
                 Slider(
-                    value = settings.dailyTarget.toFloat(),
-                    onValueChange = { scope.launch { vm.settingsRepo.setDailyTarget(it.toInt()) } },
+                    value = daily,
+                    onValueChange = { daily = it },
+                    onValueChangeFinished = {
+                        scope.launch { vm.settingsRepo.setDailyTarget(daily.toInt()) }
+                    },
                     valueRange = 1f..50f
                 )
                 Text(

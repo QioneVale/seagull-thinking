@@ -157,7 +157,7 @@ fun AppRoot(vm: AppViewModel) {
             snackbarHost = { SnackbarHost(snackbar) },
             bottomBar = {
                 Column {
-                    if (current != null && route != "player") {
+                    if (current != null && route != "player" && route != "ad") {
                         MiniPlayer(
                             vm = vm,
                             playing = playing,

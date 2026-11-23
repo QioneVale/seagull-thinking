@@ -80,7 +80,7 @@ fun SettingsScreen(
             SeagullCard {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     MiniStat("广告复盘", "${records.size}")
-                    MiniStat("分析点", "${records.sumOf { if (it.analysisDoneAt != null) settings.labels.size else 0 }}")
+                    MiniStat("分析组", "${records.count { it.analysisDoneAt != null }}")
                     MiniStat("随想", "${records.count { it.note.isNotBlank() }}")
                     MiniStat("明志", "${quotes.size}")
                 }

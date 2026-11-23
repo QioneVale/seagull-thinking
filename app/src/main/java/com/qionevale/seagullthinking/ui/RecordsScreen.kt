@@ -105,8 +105,10 @@ fun RecordsScreen(vm: AppViewModel) {
                     )
                     Spacer(Modifier.width(8.dp))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        val dayLabel = Fmt.dayLabel(date)
+                        val dayFull = "${date.monthValue}月${date.dayOfMonth}日"
                         Text(
-                            "${Fmt.dayLabel(date)} · ${date.monthValue}月${date.dayOfMonth}日",
+                            if (dayLabel == dayFull) dayFull else "$dayLabel · $dayFull",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold
                         )

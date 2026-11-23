@@ -432,8 +432,7 @@ private fun SectionRow(title: String, active: Boolean, onClick: () -> Unit) {
 }
 
 private fun sourceLabel(source: String): String = when (source) {
-    "SAMPLE" -> "内置示例"
-    "LOCAL" -> "本地视频"
+    "VIDEO", "LOCAL" -> "视频素材"
     "WEB" -> "网页链接"
     else -> source
 }

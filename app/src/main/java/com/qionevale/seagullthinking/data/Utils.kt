@@ -51,6 +51,9 @@ object Files {
     fun coverDir(context: Context): File =
         File(context.filesDir, "covers").apply { mkdirs() }
 
+    fun adDir(context: Context): File =
+        File(context.filesDir, "ads").apply { mkdirs() }
+
     fun bgFile(context: Context): File =
         File(context.filesDir, "background.jpg")
 

@@ -130,8 +130,7 @@ class Exporter(private val context: Context, private val db: AppDatabase) {
     }
 
     fun sourceLabel(source: String): String = when (source) {
-        "SAMPLE" -> "内置示例"
-        "LOCAL" -> "本地视频"
+        "VIDEO", "LOCAL" -> "视频素材"
         "WEB" -> "网页链接"
         else -> source
     }

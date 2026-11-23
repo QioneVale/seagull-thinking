@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -48,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -55,9 +57,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.qionevale.seagullthinking.data.Fmt
 import com.qionevale.seagullthinking.data.RepeatUi
 import kotlinx.coroutines.delay
+import java.io.File
 
 @Composable
 fun PlayerScreen(
@@ -184,34 +188,21 @@ fun PlayerScreen(
                     )
                 }
             } else {
-                Box(contentAlignment = Alignment.Center) {
-                    Box(
-                        Modifier
-                            .size(268.dp)
-                            .graphicsLayer { rotationZ = rotation.value }
-                            .clip(CircleShape)
-                            .background(
-                                Brush.radialGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
-                                        Color.Transparent
-                                    )
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        MusicCover(
-                            path = mode?.coverPath,
-                            size = 228.dp,
-                            seed = mode?.name ?: track.title
-                        )
-                        // 唱片中心孔
-                        Box(
-                            Modifier
-                                .size(28.dp)
-                                .background(MaterialTheme.colorScheme.background, CircleShape)
-                        )
-                    }
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 34.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // 整张封面一起转，中间不再留白点
+                    DiscCover(
+                        path = mode?.coverPath,
+                        seed = mode?.name ?: track.title,
+                        rotation = rotation.value,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                    )
                 }
                 Spacer(Modifier.height(28.dp))
                 Text(
@@ -355,6 +346,44 @@ fun PlayerScreen(
                 TextButton(onClick = { showTimer = false }) { Text("关闭") }
             }
         )
+    }
+}
+
+@Composable
+private fun DiscCover(
+    path: String?,
+    seed: String,
+    rotation: Float,
+    modifier: Modifier = Modifier
+) {
+    val colors = remember(seed) {
+        val h = (seed.hashCode() % 360 + 360) % 360
+        listOf(
+            Color.hsl(h.toFloat(), 0.45f, 0.62f),
+            Color.hsl(((h + 40) % 360).toFloat(), 0.5f, 0.42f)
+        )
+    }
+    Box(
+        modifier
+            .graphicsLayer { rotationZ = rotation }
+            .clip(CircleShape)
+            .background(Brush.linearGradient(colors)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (path != null && File(path).exists()) {
+            AsyncImage(
+                model = File(path),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Text(
+                seed.take(1),
+                style = MaterialTheme.typography.displayMedium,
+                color = Color.White.copy(alpha = 0.92f)
+            )
+        }
     }
 }
 

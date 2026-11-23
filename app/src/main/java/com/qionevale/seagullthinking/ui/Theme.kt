@@ -108,7 +108,12 @@ fun SeagullTheme(settings: AppSettings, content: @Composable () -> Unit) {
         DarkPref.SYSTEM -> systemDark
     }
     val accent = accentColor(settings)
-    val scheme = if (dark) darkScheme(accent) else lightScheme(accent)
+    val base = if (dark) darkScheme(accent) else lightScheme(accent)
+    // 设了背景图就把卡片做成半透明玻璃，让照片透出来，同时压住文字底色
+    val scheme = if (settings.backgroundPath == null) base else base.copy(
+        surface = base.surface.copy(alpha = if (dark) 0.80f else 0.84f),
+        surfaceVariant = base.surfaceVariant.copy(alpha = 0.68f)
+    )
     val family = fontFamily(settings.font)
     val density = LocalDensity.current
     val view = LocalView.current

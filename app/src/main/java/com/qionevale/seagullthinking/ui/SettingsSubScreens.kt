@@ -31,6 +31,8 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -237,6 +239,15 @@ fun PlanScreen(vm: AppViewModel, onBack: () -> Unit) {
     var editingIndex by remember { mutableStateOf(-1) }
     var editingText by remember { mutableStateOf("") }
     var cookie by remember { mutableStateOf("") }
+    var showAddLink by remember { mutableStateOf(false) }
+
+    val adVideoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            vm.addAdVideos(uris) { n -> vm.say("已加入广告库 $n 条") }
+        }
+    }
 
     LaunchedEffect(settings.biliCookie) { cookie = settings.biliCookie }
 
@@ -291,28 +302,68 @@ fun PlanScreen(vm: AppViewModel, onBack: () -> Unit) {
             }
 
             Spacer(Modifier.height(24.dp))
-            SectionLabel("广告来源")
+            SectionLabel("我的广告库（点海鸥就从这里播）")
             SeagullCard {
-                ToggleRow(
-                    title = "内置示例广告",
-                    desc = "3 条 9 秒的示例素材，装上就能用",
-                    checked = settings.sourceSample,
-                    onChange = { scope.launch { vm.settingsRepo.setSourceSample(it) } }
-                )
+                val assets by vm.adAssets.collectAsState()
+                if (assets.isEmpty()) {
+                    Text(
+                        "库还空着。加几条你平时刷到的真实广告——抖音录屏、朋友圈视频都行，之后点海鸥就直接开播，不再弹来源选择。",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    assets.forEachIndexed { i, a ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    a.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    if (a.kind == "WEB") "网页链接 · 已看 ${a.playCount} 次"
+                                    else "视频素材 · 已看 ${a.playCount} 次",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            SmallIcon(Icons.Rounded.Delete) { vm.deleteAdAsset(a) }
+                        }
+                        if (i < assets.lastIndex) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "每次点海鸥，按「最久没看过」的顺序取一条，全部看完再从头轮。",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
-                ToggleRow(
-                    title = "本地视频",
-                    desc = "从手机里选广告视频或录屏",
-                    checked = settings.sourceLocal,
-                    onChange = { scope.launch { vm.settingsRepo.setSourceLocal(it) } }
-                )
-                Spacer(Modifier.height(12.dp))
-                ToggleRow(
-                    title = "网页链接",
-                    desc = "贴一个广告页链接，App 内打开",
-                    checked = settings.sourceWeb,
-                    onChange = { scope.launch { vm.settingsRepo.setSourceWeb(it) } }
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GhostPill(
+                        text = "加视频",
+                        icon = Icons.Rounded.VideoLibrary,
+                        modifier = Modifier.weight(1f),
+                        onClick = { adVideoPicker.launch(arrayOf("video/*")) }
+                    )
+                    GhostPill(
+                        text = "加链接",
+                        icon = Icons.Rounded.Link,
+                        modifier = Modifier.weight(1f),
+                        onClick = { showAddLink = true }
+                    )
+                }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -439,6 +490,19 @@ fun PlanScreen(vm: AppViewModel, onBack: () -> Unit) {
                 list[editingIndex] = text
                 scope.launch { vm.settingsRepo.setLabels(list) }
                 editingIndex = -1
+            }
+        )
+    }
+
+    if (showAddLink) {
+        InputDialog(
+            title = "加一个网页广告",
+            placeholder = "https://… 广告页地址",
+            confirmText = "加入广告库",
+            onDismiss = { showAddLink = false },
+            onConfirm = { url ->
+                vm.addAdLink("网页广告", url.trim())
+                showAddLink = false
             }
         )
     }

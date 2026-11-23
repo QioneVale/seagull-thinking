@@ -7,6 +7,7 @@ import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.qionevale.seagullthinking.SeagullApp
+import com.qionevale.seagullthinking.data.AdAsset
 import com.qionevale.seagullthinking.data.AdRecord
 import com.qionevale.seagullthinking.data.AnalysisItem
 import com.qionevale.seagullthinking.data.AppSettings
@@ -58,6 +59,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         db.musicModeDao().observeAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val adAssets: StateFlow<List<AdAsset>> =
+        db.adAssetDao().observeAll()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val analyses: StateFlow<List<AnalysisItem>> =
         db.analysisItemDao().observeAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -74,23 +79,39 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
-            if (db.quoteDao().count() == 0) seedQuotes()
+            if (db.quoteDao().count() == 0) seedQuotes() else dressLegacyQuotes()
+        }
+    }
+
+    /**
+     * 1.0.0 的语录只能写文字，没有样式。这里给一批"从没调整过"的老语录
+     * 一次性排一下字号，让墙在升级后立刻像面墙，之后怎么改都由用户自己定。
+     */
+    private suspend fun dressLegacyQuotes() {
+        val all = db.quoteDao().allOnce()
+        if (all.isEmpty() || all.size > 10) return
+        if (all.any { it.fontKey != null || it.scale != 1f || it.colorArgb != 0 }) return
+        val sizes = listOf(1.55f, 1.0f, 0.95f, 1.9f, 1.55f, 1.15f, 1.0f, 0.85f)
+        all.forEachIndexed { i, q ->
+            db.quoteDao().update(
+                q.copy(scale = sizes[i % sizes.size], fontKey = "serif")
+            )
         }
     }
 
     private suspend fun seedQuotes() {
         val now = System.currentTimeMillis()
         val seeds = listOf(
-            Triple("先把一件事做透，再谈第二件。", 0.22f, 0.18f),
-            Triple("看广告不是看热闹，是看别人怎么把钱挣走。", 0.5f, 0.38f),
-            Triple("每天三条，半年就是五百四十次商业复盘。", 0.3f, 0.62f),
-            Triple("今天不想动，就先坐着听完一首歌。", 0.62f, 0.78f)
+            Quote(text = "先把一件事\n做透，再谈第二件", xRatio = 0.26f, yRatio = 0.16f, scale = 1.55f, createdAt = now),
+            Quote(text = "看广告不是看热闹", xRatio = 0.66f, yRatio = 0.10f, scale = 1.0f, createdAt = now + 1),
+            Quote(text = "是看别人怎么把钱挣走", xRatio = 0.50f, yRatio = 0.30f, scale = 0.95f, createdAt = now + 2),
+            Quote(text = "每天三条", xRatio = 0.18f, yRatio = 0.44f, scale = 1.9f, bold = true, createdAt = now + 3),
+            Quote(text = "半年就是五百四十次复盘", xRatio = 0.56f, yRatio = 0.52f, scale = 30f / 18f, fontKey = "system", createdAt = now + 4),
+            Quote(text = "今天不想动", xRatio = 0.24f, yRatio = 0.66f, scale = 1.15f, italic = true, createdAt = now + 5),
+            Quote(text = "就先坐着听完一首歌", xRatio = 0.62f, yRatio = 0.74f, scale = 1.0f, createdAt = now + 6),
+            Quote(text = "慢一点没关系", xRatio = 0.34f, yRatio = 0.86f, scale = 0.85f, colorArgb = 0, createdAt = now + 7)
         )
-        seeds.forEachIndexed { i, (text, x, y) ->
-            db.quoteDao().insert(
-                Quote(text = text, xRatio = x, yRatio = y, createdAt = now + i)
-            )
-        }
+        seeds.forEach { db.quoteDao().insert(it.copy(fontKey = it.fontKey ?: "serif")) }
     }
 
     fun say(msg: String) {
@@ -151,15 +172,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- 语录 ----------------
 
-    fun addQuote(text: String, x: Float, y: Float) {
-        if (text.isBlank()) return
+    fun addQuote(quote: Quote) {
+        if (quote.text.isBlank()) return
         viewModelScope.launch {
             db.quoteDao().insert(
-                Quote(text = text.trim(), xRatio = x, yRatio = y, createdAt = System.currentTimeMillis())
+                quote.copy(id = 0, text = quote.text.trim(), createdAt = System.currentTimeMillis())
             )
         }
     }
 
+    /** 保存一句话的内容与全部排版 */
+    fun saveQuote(quote: Quote) {
+        if (quote.text.isBlank()) return
+        viewModelScope.launch { db.quoteDao().update(quote.copy(text = quote.text.trim())) }
+    }
+
+    /** 只在编辑模式下移动位置 */
     fun moveQuote(quote: Quote, x: Float, y: Float) {
         viewModelScope.launch {
             db.quoteDao().update(quote.copy(xRatio = x.coerceIn(0.03f, 0.97f), yRatio = y.coerceIn(0.03f, 0.97f)))
@@ -173,6 +201,79 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteQuote(quote: Quote) {
         viewModelScope.launch { db.quoteDao().delete(quote) }
+    }
+
+    // ---------------- 广告素材库 ----------------
+
+    /**
+     * 取下一条要看的广告：优先挑最久没看过的，全都看过就从头轮。
+     * 返回 null 表示库里还没有素材。
+     */
+    suspend fun takeNextAd(): AdAsset? = withContext(Dispatchers.IO) {
+        val all = db.adAssetDao().allOnce()
+        val next = all.firstOrNull() ?: return@withContext null
+        db.adAssetDao().update(
+            next.copy(lastPlayedAt = System.currentTimeMillis(), playCount = next.playCount + 1)
+        )
+        next
+    }
+
+    /** 把选中的视频复制进 App 内部，之后永远能播，不依赖相册权限 */
+    fun addAdVideos(uris: List<Uri>, onDone: (Int) -> Unit = {}) {
+        if (uris.isEmpty()) return
+        viewModelScope.launch {
+            var added = 0
+            withContext(Dispatchers.IO) {
+                uris.forEachIndexed { i, uri ->
+                    runCatching {
+                        val name = queryName(uri) ?: "广告 ${System.currentTimeMillis()}"
+                        val target = File(
+                            Files.adDir(ctx),
+                            "ad_${System.currentTimeMillis()}_${i}." + name.substringAfterLast('.', "mp4")
+                        )
+                        Files.copyTo(ctx, uri, target)
+                        db.adAssetDao().insert(
+                            AdAsset(
+                                title = name.substringBeforeLast(".").take(60).ifBlank { "未命名广告" },
+                                kind = "VIDEO",
+                                ref = Uri.fromFile(target).toString(),
+                                addedAt = System.currentTimeMillis()
+                            )
+                        )
+                        added++
+                    }
+                }
+            }
+            onDone(added)
+        }
+    }
+
+    fun addAdLink(title: String, url: String) {
+        if (!url.startsWith("http", ignoreCase = true)) {
+            say("链接要以 http:// 或 https:// 开头")
+            return
+        }
+        viewModelScope.launch {
+            db.adAssetDao().insert(
+                AdAsset(
+                    title = title.ifBlank { "网页广告" }.take(60),
+                    kind = "WEB",
+                    ref = url.trim(),
+                    addedAt = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
+    fun deleteAdAsset(asset: AdAsset) {
+        viewModelScope.launch {
+            db.adAssetDao().delete(asset)
+            if (asset.kind == "VIDEO") {
+                withContext(Dispatchers.IO) {
+                    runCatching { File(Uri.parse(asset.ref).path ?: "").delete() }
+                }
+            }
+        }
     }
 
     // ---------------- 音乐 ----------------
@@ -324,6 +425,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             db.trackDao().clear()
             db.musicModeDao().clear()
             db.quoteDao().clear()
+            db.adAssetDao().clear()
             player.player.clearMediaItems()
             seedQuotes()
             onDone()

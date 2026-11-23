@@ -54,9 +54,6 @@ data class AppSettings(
     val cardRound: Boolean = true,
     val dailyTarget: Int = 3,
     val labels: List<String> = DEFAULT_LABELS,
-    val sourceSample: Boolean = true,
-    val sourceLocal: Boolean = true,
-    val sourceWeb: Boolean = true,
     val biliCookie: String = "",
     val exportTreeUri: String? = null,
     val autoNext: Boolean = true
@@ -80,9 +77,6 @@ class SettingsRepository(private val context: Context) {
         val CARD_ROUND = booleanPreferencesKey("card_round")
         val DAILY_TARGET = intPreferencesKey("daily_target")
         val LABELS = stringPreferencesKey("labels")
-        val SOURCE_SAMPLE = booleanPreferencesKey("source_sample")
-        val SOURCE_LOCAL = booleanPreferencesKey("source_local")
-        val SOURCE_WEB = booleanPreferencesKey("source_web")
         val BILI_COOKIE = stringPreferencesKey("bili_cookie")
         val EXPORT_TREE = stringPreferencesKey("export_tree")
         val AUTO_NEXT = booleanPreferencesKey("auto_next")
@@ -98,9 +92,6 @@ class SettingsRepository(private val context: Context) {
             cardRound = p[Keys.CARD_ROUND] ?: true,
             dailyTarget = (p[Keys.DAILY_TARGET] ?: 3).coerceIn(1, 50),
             labels = decodeLabels(p[Keys.LABELS]),
-            sourceSample = p[Keys.SOURCE_SAMPLE] ?: true,
-            sourceLocal = p[Keys.SOURCE_LOCAL] ?: true,
-            sourceWeb = p[Keys.SOURCE_WEB] ?: true,
             biliCookie = p[Keys.BILI_COOKIE] ?: "",
             exportTreeUri = p[Keys.EXPORT_TREE]?.takeIf { it.isNotBlank() },
             autoNext = p[Keys.AUTO_NEXT] ?: true
@@ -128,9 +119,6 @@ class SettingsRepository(private val context: Context) {
     suspend fun setLabels(list: List<String>) = edit {
         it[Keys.LABELS] = gson.toJson(list.ifEmpty { AppSettings.DEFAULT_LABELS })
     }
-    suspend fun setSourceSample(v: Boolean) = edit { it[Keys.SOURCE_SAMPLE] = v }
-    suspend fun setSourceLocal(v: Boolean) = edit { it[Keys.SOURCE_LOCAL] = v }
-    suspend fun setSourceWeb(v: Boolean) = edit { it[Keys.SOURCE_WEB] = v }
     suspend fun setBiliCookie(v: String) = edit { it[Keys.BILI_COOKIE] = v }
     suspend fun setExportTree(uri: String?) = edit {
         if (uri == null) it.remove(Keys.EXPORT_TREE) else it[Keys.EXPORT_TREE] = uri

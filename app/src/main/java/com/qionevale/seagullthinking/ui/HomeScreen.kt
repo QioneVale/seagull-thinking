@@ -63,6 +63,7 @@ fun HomeScreen(
 ) {
     val settings by vm.settings.collectAsState()
     val records by vm.records.collectAsState()
+    val assets by vm.adAssets.collectAsState()
     val today = LocalDate.now()
     val todayKey = today.toString()
     val todayRecords = records.filter { it.dayKey == todayKey }
@@ -173,20 +174,24 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                if (done >= target) "今天的薯条吃饱了，还想拆就继续点它" else "点一下海鸥，它会叼着薯条飞过来",
+                when {
+                    assets.isEmpty() -> "点一下海鸥，先挑一段手机里的真实广告"
+                    done >= target -> "今天的薯条吃饱了，还想拆就继续点它"
+                    else -> "点一下海鸥，直接开播下一条"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(6.dp))
             val last = todayRecords.maxByOrNull { it.watchedAt }
-            if (last != null) {
-                Text(
-                    "上一条：${last.title} · ${Fmt.clock(last.watchedAt)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
-                )
-            }
+            Text(
+                if (last != null) "广告库 ${assets.size} 条 · 上一条：${last.title} · ${Fmt.clock(last.watchedAt)}"
+                else "广告库 ${assets.size} 条",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

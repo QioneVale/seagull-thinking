@@ -78,7 +78,12 @@ import com.qionevale.seagullthinking.data.Fmt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-data class AdPlayRequest(val title: String, val source: String, val ref: String)
+data class AdPlayRequest(
+    val title: String,
+    val source: String,
+    val ref: String,
+    val assetId: Long = 0
+)
 
 private sealed interface AdPhase {
     data object Playing : AdPhase
@@ -144,7 +149,7 @@ fun AdSessionScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            if (request.source == "SAMPLE") "广告 · 内置示例" else "广告 · ${request.title}",
+                            "广告 · ${request.title}",
                             color = Color.White.copy(alpha = 0.85f),
                             style = MaterialTheme.typography.labelMedium
                         )
@@ -259,11 +264,7 @@ private fun VideoAd(request: AdPlayRequest, onEnded: () -> Unit) {
     }
 
     LaunchedEffect(request.ref) {
-        val uri = when (request.source) {
-            "SAMPLE" -> "asset:///${request.ref}"
-            else -> request.ref
-        }
-        exo.setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
+        exo.setMediaItem(MediaItem.fromUri(Uri.parse(request.ref)))
         exo.prepare()
         exo.play()
     }

@@ -69,6 +69,9 @@ interface QuoteDao {
     @Query("SELECT * FROM quotes ORDER BY createdAt ASC")
     fun observeAll(): Flow<List<Quote>>
 
+    @Query("SELECT * FROM quotes ORDER BY createdAt ASC")
+    suspend fun allOnce(): List<Quote>
+
     @Insert
     suspend fun insert(quote: Quote): Long
 
@@ -82,6 +85,30 @@ interface QuoteDao {
     suspend fun clear()
 
     @Query("SELECT COUNT(*) FROM quotes")
+    suspend fun count(): Int
+}
+
+@Dao
+interface AdAssetDao {
+    @Query("SELECT * FROM ad_assets ORDER BY lastPlayedAt ASC, addedAt ASC")
+    fun observeAll(): Flow<List<AdAsset>>
+
+    @Query("SELECT * FROM ad_assets ORDER BY lastPlayedAt ASC, addedAt ASC")
+    suspend fun allOnce(): List<AdAsset>
+
+    @Insert
+    suspend fun insert(asset: AdAsset): Long
+
+    @Update
+    suspend fun update(asset: AdAsset)
+
+    @Delete
+    suspend fun delete(asset: AdAsset)
+
+    @Query("DELETE FROM ad_assets")
+    suspend fun clear()
+
+    @Query("SELECT COUNT(*) FROM ad_assets")
     suspend fun count(): Int
 }
 
